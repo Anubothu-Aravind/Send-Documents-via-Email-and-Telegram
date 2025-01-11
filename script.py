@@ -54,7 +54,7 @@ if uploaded_files:
         try:
             msg = MIMEMultipart()
             msg['From'] = EMAIL_ADDRESS
-            msg['To'] = 'recipient_email@example.com'  # Replace with the recipient's email
+            msg['To'] = 'aanubothu@gmail.com'  # Replace with the recipient's email
             msg['Subject'] = "Documents from Streamlit App"
 
             for uploaded_file in uploaded_files:
