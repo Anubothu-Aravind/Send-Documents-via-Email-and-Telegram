@@ -68,7 +68,7 @@ def send_email_with_all_files(uploaded_files, recipient_emails):
         msg = MIMEMultipart()
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = ', '.join(recipient_emails)
-        msg['Subject'] = "Documents from Streamlit App"
+        msg['Subject'] = "New File Detected At The Destined Area"
 
         for uploaded_file in uploaded_files:
             file_name = uploaded_file.name
