@@ -23,23 +23,28 @@ SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
 
 st.title("Send Documents via Email and Telegram")
 
+# Initialize session state
+if "sent_files" not in st.session_state:
+    st.session_state["sent_files"] = set()  # Track sent files by name
+
 # Input email addresses
 email_addresses = st.text_input("Enter recipient email address(es) (comma-separated):")
 
 # File uploader for multiple files
 uploaded_files = st.file_uploader("Upload documents", type=["pdf", "docx", "txt", "jpg", "png"], accept_multiple_files=True)
 
-# Clear telegram_sent flag every time new files are uploaded
-if uploaded_files:
-    st.session_state["telegram_sent"] = False
+# Function to send files via Telegram
+def send_telegram(uploaded_files):
+    for uploaded_file in uploaded_files:
+        file_name = uploaded_file.name
+        file_content = uploaded_file.read()
 
-if uploaded_files and not st.session_state["telegram_sent"]:
-    st.success(f"Uploaded {len(uploaded_files)} file(s) successfully!")
+        # Skip already sent files
+        if file_name in st.session_state["sent_files"]:
+            continue
 
-    # Automatically send files to Telegram
-    def send_telegram(file_name, file_content):
-        for chat_id in TELEGRAM_CHAT_IDS:
-            try:
+        try:
+            for chat_id in TELEGRAM_CHAT_IDS:
                 files = {"document": (file_name, io.BytesIO(file_content))}
                 url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument"
                 data = {"chat_id": chat_id.strip()}
@@ -47,20 +52,17 @@ if uploaded_files and not st.session_state["telegram_sent"]:
 
                 if response.status_code == 200:
                     st.success(f"Document '{file_name}' sent to Telegram chat ID {chat_id.strip()} successfully!")
+                    st.session_state["sent_files"].add(file_name)  # Mark as sent
                 else:
                     st.error(f"Failed to send document '{file_name}' to Telegram chat ID {chat_id.strip()}: {response.text}")
-            except Exception as e:
-                st.error(f"Failed to send document '{file_name}' to Telegram chat ID {chat_id.strip()}: {e}")
+        except Exception as e:
+            st.error(f"Failed to send document '{file_name}' to Telegram: {e}")
 
-    for uploaded_file in uploaded_files:
-        file_name = uploaded_file.name
-        file_content = uploaded_file.read()
-        send_telegram(file_name, file_content)
+# Automatically send new files via Telegram
+if uploaded_files:
+    send_telegram(uploaded_files)
 
-    # Mark Telegram files as sent
-    st.session_state["telegram_sent"] = True
-
-# Ask before sending files via Email
+# Function to send files via Email
 def send_email_with_all_files(uploaded_files, recipient_emails):
     try:
         msg = MIMEMultipart()
@@ -88,9 +90,13 @@ def send_email_with_all_files(uploaded_files, recipient_emails):
     except Exception as e:
         st.error(f"Failed to send email: {e}")
 
+# Button to send files via Email
 if st.button("Send All via Email"):
-    if email_addresses:
-        recipient_emails = [email.strip() for email in email_addresses.split(',')]
-        send_email_with_all_files(uploaded_files, recipient_emails)
+    if uploaded_files:
+        if email_addresses:
+            recipient_emails = [email.strip() for email in email_addresses.split(',')]
+            send_email_with_all_files(uploaded_files, recipient_emails)
+        else:
+            st.error("Please enter at least one email address.")
     else:
-        st.error("Please enter at least one email address.")
+        st.error("Please upload at least one file to send via Email.")
